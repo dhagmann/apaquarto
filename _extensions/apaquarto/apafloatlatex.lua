@@ -193,6 +193,26 @@ local processfloat = function(float)
   end
 
   if float.type == "Figure" then
+    -- Don't wrap sub-figures in their own figure environment (nested figure
+    -- environments are illegal in latex); render natively and append the note
+    if float.parent_id then
+      if float.attributes["apa-note"] then
+        local subbeforenote = ""
+        float.content:walk {
+          Image = function(img)
+            if img.attributes["beforenotespace"] then
+              subbeforenote = "\\vspace{" .. img.attributes["beforenotespace"] .. "}\n"
+            end
+          end
+        }
+        local note_prefix = pandoc.Span(pandoc.RawInline("latex", subbeforenote .. noteprefix))
+        local subnote = utilsapa.make_note(float.attributes["apa-note"], note_prefix)
+        local newcontent = pandoc.Blocks(float.content)
+        newcontent:insert(subnote)
+        float.content = newcontent
+      end
+      return float
+    end
     local hasnote = false
     local apanote
     local twocolumn = false
@@ -251,13 +271,14 @@ local processfloat = function(float)
         floatposition = ""
       end
 
+      -- splice content as Blocks (a layout figure's content is a list, not a Block)
       local returnblock = pandoc.Div({
         pandoc.RawBlock("latex", "\\begin{" .. latexenv .. "}" .. floatposition),
-        captionspan,
-        float.content,
-        apanotedivs,
-        pandoc.RawBlock("latex", "\\end{" .. latexenv .. "}")
+        captionspan
       })
+      returnblock.content:extend(pandoc.Blocks(float.content))
+      returnblock.content:insert(apanotedivs)
+      returnblock.content:insert(pandoc.RawBlock("latex", "\\end{" .. latexenv .. "}"))
 
       return returnblock
     end
