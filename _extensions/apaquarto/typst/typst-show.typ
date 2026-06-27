@@ -1,4 +1,4 @@
-#show: document => $documentmode$(
+#show: document => $if(documentmode)$$documentmode$$else$man$endif$(
 $if(suppress-short-title)$
 $else$
 $if(shorttitle)$

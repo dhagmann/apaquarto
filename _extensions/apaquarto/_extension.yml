@@ -71,6 +71,11 @@ contributes:
         # Move figures and tables to end of document
         - at: pre-ast
           path: apafloatstoend.lua
+        # Mark apa-twocolumn floats (and capture table notes) AFTER float
+        # placement but before Quarto realizes markdown tables, so the marker
+        # stays adjacent to a float that floatsintext: false has moved to the end.
+        - at: pre-ast
+          path: apatwocolumntypstcollect.lua
  
         # Set latex document mode
         - at: pre-ast
@@ -135,6 +140,9 @@ contributes:
         # Puts proper spacing for paragraphs after figures and tables
         - at: post-render
           path: apaafternote.lua
+        # Span apa-twocolumn figures across both columns in typst journal mode
+        - at: post-render
+          path: apatwocolumntypst.lua
         # Process citations, adds asterisks for meta-analysis citations
         - at: post-render
           path: citeprocr.lua

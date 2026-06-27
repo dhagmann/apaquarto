@@ -21,8 +21,11 @@
 
 #let firstlineindent=0.5in
 
-// documentmode: man
-#let man(
+// Shared APA layout for every document mode. man/jou/doc/stu (defined below the
+// function) are thin presets that override only the parameters that differ —
+// spacing, column count, justification, body font — while this function holds
+// everything they have in common.
+#let apa-layout(
   title: none,
   runninghead: none,
   margin: (x: 1in, y: 1in),
@@ -32,17 +35,24 @@
   leading: 18pt,
   spacing: 18pt,
   firstlineindent: 0.5in,
+  quoteinset: 0.5in,
   toc: false,
   lang: "en",
   cols: 1,
+  justify: false,
+  headerstyle: "running",
+  pagenumbering: none,
   numbersections: false,
   numberdepth: 3,
   first-page: 1,
   suppresstitlepage: false,
+  updatepagecounter: false,
   doc,
 ) = {
 
-  if suppresstitlepage {counter(page).update(first-page)}
+  // Manuscript modes set the first page via the front-matter page break; journal
+  // and document modes have no such break, so honor first-page directly here.
+  if suppresstitlepage or updatepagecounter {counter(page).update(first-page)}
   
    show raw.where(block: true): set par(
     spacing: 6pt,
@@ -53,15 +63,38 @@
     size: 10pt
   )
 
+  // Page header per mode: running head (man), page number only (stu), running
+  // head suppressed on the first page (jou), or none (doc, which numbers pages
+  // at the foot instead).
+  let pageheader = if headerstyle == "pagenum" {
+    align(right)[#context counter(page).display()]
+  } else if headerstyle == "jou" {
+    context {
+      if counter(page).get().at(0) > first-page {
+        grid(
+          columns: (9fr, 1fr),
+          align(left)[#upper[#runninghead]],
+          align(right)[#counter(page).display()],
+        )
+      }
+    }
+  } else if headerstyle == "none" {
+    none
+  } else {
+    grid(
+      columns: (9fr, 1fr),
+      align(left)[#upper[#runninghead]],
+      align(right)[#context counter(page).display()],
+    )
+  }
+
   set page(
     margin: margin,
     paper: paper,
+    columns: cols,
+    numbering: pagenumbering,
     header-ascent: 50%,
-    header: grid(
-      columns: (9fr, 1fr),
-      align(left)[#upper[#runninghead]],
-      align(right)[#context counter(page).display()]
-    )
+    header: pageheader,
   )
   
 
@@ -77,7 +110,7 @@
   )
 
   set par(
-    justify: false, 
+    justify: justify,
     leading: leading,
     first-line-indent: firstlineindent
   )
@@ -94,7 +127,7 @@
   show link: set text(blue)
   show "al.'s": "al.\u{2019}s"
 
-  show quote: set pad(x: 0.5in)
+  show quote: set pad(x: quoteinset)
   show quote: set par(leading: leading)
   show quote: set block(spacing: spacing, above: spacing, below: spacing)
   // show LaTeX
@@ -169,14 +202,53 @@
   
   
 
-  if cols == 1 {
-    doc
-  } else {
-    columns(cols, gutter: 4%, doc)
-  }
-  
-
-
-
+  // Column layout is set at the page level (set page(columns: ...)) rather than
+  // with the columns() container, because the title page and abstract use
+  // pagebreaks, which are not permitted inside a container.
+  doc
 }
+
+// documentmode: man — APA manuscript: double-spaced, single column. This is the
+// default mode and uses apa-layout's defaults unchanged.
+#let man(..args) = apa-layout(..args)
+
+// documentmode: jou — APA published-article style: two columns, justified,
+// single-spaced, smaller body font, tighter margins. The running head is
+// suppressed on the first page. The full-width title/abstract masthead (so it
+// spans both columns) is assembled in frontmatter.lua.
+#let jou(..args) = apa-layout(
+  margin: (x: 0.75in, y: 0.8in),
+  fontsize: 10pt,
+  leading: 11pt,
+  spacing: 5pt,
+  firstlineindent: 0.15in,
+  quoteinset: 0.25in,
+  cols: 2,
+  justify: true,
+  headerstyle: "jou",
+  updatepagecounter: true,
+  ..args,
+)
+
+// documentmode: doc — a plain, continuous one-column document: justified, no
+// title page or running head, page numbers at the foot. For notes and reports
+// that do not need full manuscript formatting.
+#let doc(..args) = apa-layout(
+  leading: 14pt,
+  spacing: 8pt,
+  firstlineindent: 0.25in,
+  justify: true,
+  headerstyle: "none",
+  pagenumbering: "1",
+  updatepagecounter: true,
+  ..args,
+)
+
+// documentmode: stu — student paper. Manuscript page layout, but the header is
+// the page number only (no running head); student-specific title-page fields
+// (course, professor, due date, note) are added in the front matter.
+#let stu(..args) = apa-layout(
+  headerstyle: "pagenum",
+  ..args,
+)
 

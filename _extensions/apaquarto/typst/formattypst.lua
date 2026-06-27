@@ -46,9 +46,13 @@ return {
       if doc.meta.language and doc.meta.language["crossref-apx-prefix"] then
         appendixword = pandoc.utils.stringify(doc.meta.language["crossref-apx-prefix"])
       end
-      
+      -- The first-paragraph indent fix is for the manuscript body; in journal
+      -- mode it would land inside the masthead and author note, so skip it.
+      local journalmode = doc.meta.documentmode and
+        pandoc.utils.stringify(doc.meta.documentmode) == "jou"
+
       for i = #doc.blocks, 1, -1 do
-        if doc.blocks[i].t == "Para" and doc.blocks[i-1].t ~= "Para" then 
+        if i > 1 and not journalmode and doc.blocks[i].t == "Para" and doc.blocks[i-1].t ~= "Para" then
           if doc.blocks[i-1].t == "Header" and doc.blocks[i-1].level > 3 then
             --Do nothing
           else

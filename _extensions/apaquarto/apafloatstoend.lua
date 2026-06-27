@@ -11,8 +11,24 @@ Pandoc = function(doc)
   end
 
 
-  if doc.meta.floatsintext and pandoc.utils.stringify(doc.meta.floatsintext) == "true" then
-    movefloatstoend = false
+  -- An explicit floatsintext (true OR false) is an override and must win. Test
+  -- for nil, not truthiness: a YAML `false` arrives as Lua false, so the old
+  -- `if doc.meta.floatsintext` treated `floatsintext: false` as unset and let
+  -- the journal default below override it.
+  if doc.meta.floatsintext ~= nil then
+    if pandoc.utils.stringify(doc.meta.floatsintext) == "true" then
+      movefloatstoend = false
+    end
+  elseif FORMAT == "typst" and doc.meta.documentmode then
+    -- Journal (published-article) and document (continuous, LaTeX-article-like)
+    -- modes place figures and tables inline by default, unless the author sets
+    -- floatsintext. This matches the .pdf side, where these modes also keep
+    -- floats in place; manuscript (man) and student (stu) modes keep the
+    -- submission convention of collecting floats at the end.
+    local mode = pandoc.utils.stringify(doc.meta.documentmode)
+    if mode == "jou" or mode == "doc" then
+      movefloatstoend = false
+    end
   end
 
 
